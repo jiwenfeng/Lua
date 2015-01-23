@@ -1,0 +1,5 @@
+local a = array:new(100)
+print(a:size())
+a:get(-1)
+print(a:__tostring())
+print(type(a))
