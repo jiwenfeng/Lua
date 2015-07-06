@@ -10,6 +10,7 @@ static int
 lmysql_open(lua_State *L)
 {
 	MYSQL ** mysql = (MYSQL **)lua_newuserdata(L, sizeof(MYSQL *));
+	mysql_library_init(0, NULL, NULL);
 	*mysql = mysql_init(NULL);
 	luaL_getmetatable(L, "mysql");
 	lua_setmetatable(L, -2); 
@@ -23,6 +24,7 @@ lmysql_close(lua_State *L)
 	if(NULL != mysql)
 	{
 		mysql_close(mysql);
+		mysql_library_end();
 	}
 	return 0;
 }
