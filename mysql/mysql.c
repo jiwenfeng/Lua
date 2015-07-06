@@ -7,34 +7,28 @@
 #include <mysql.h>
 
 static int
-host_is_legal(const char *h)
+lmysql_open(lua_State *L)
 {
-	if(strcmp(h, "localhost") == 0)
-	{
-		return 0;
-	}
-	int a, b, c, d;
-	sscanf(h, "%d.%d.%d.%d", &a, &b, &c, &d);
-	if(a > 0 && a < 255 && b >= 0 && b < 255 && c >= 0 && c < 255 && d > 0 && d < 255)
-	{
-		return 0;
-	}
-	return -1;
+	MYSQL ** mysql = (MYSQL **)lua_newuserdata(L, sizeof(MYSQL *));
+	*mysql = mysql_init(NULL);
+	luaL_getmetatable(L, "mysql");
+	lua_setmetatable(L, -2); 
+	return 1;
 }
 
 static int
-connection_gc(lua_State *L)
+lmysql_close(lua_State *L)
 {
-	MYSQL **mysql = (MYSQL **)lua_touserdata(L, 1);
-	if(*mysql)
+	MYSQL *mysql = *(MYSQL **)lua_touserdata(L, 1);
+	if(NULL != mysql)
 	{
-		mysql_close(*mysql);
+		mysql_close(mysql);
 	}
 	return 0;
 }
 
 static int
-mysql_connect(lua_State *L)
+lmysql_connect(lua_State *L)
 {
 	int narg = lua_gettop(L);
 	if(narg != 6)
@@ -43,41 +37,39 @@ mysql_connect(lua_State *L)
 		lua_pushstring(L, "too few arguments to function 'connect'");
 		return 0;
 	}
-	MYSQL ** mysql = (MYSQL **)lua_touserdata(L, 1);
+	MYSQL *mysql = *(MYSQL **)lua_touserdata(L, 1);
 	luaL_argcheck(L, mysql, 1, "'mysql' excepted ");
 	const char *host = lua_tostring(L, 2);
-	int ret = host_is_legal(host);
-	luaL_argcheck(L, ret == 0, 2, "invalid host address");
 	const char *uname = lua_tostring(L, 3);
 	const char *passwd = lua_tostring(L, 4);
 	const char *dbname = lua_tostring(L, 5);
 	int timeout = (int)lua_tonumber(L, 6);
 	if(timeout > 0)
 	{
-		mysql_options(*mysql, MYSQL_OPT_CONNECT_TIMEOUT, (const char *)&timeout);
+		mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (const char *)&timeout);
 	}
-	if(!mysql_real_connect(*mysql, host, uname, passwd, dbname, 0, NULL, 0))
+	if(!mysql_real_connect(mysql, host, uname, passwd, dbname, 0, NULL, 0))
 	{
 		lua_pushnil(L);
-		lua_pushstring(L, mysql_error(*mysql));
+		lua_pushstring(L, mysql_error(mysql));
 		return 2;
 	}
 	return 1;
 }
 
 static int
-mysql_do_it(MYSQL *mysql, const char *str, int length)
+mysql_execute(MYSQL *mysql, const char *str, int length)
 {
 	return mysql_real_query(mysql, str, length);
 }
 
 static int
-mysql_table_list(lua_State *L)
+lmysql_tables(lua_State *L)
 {
-	MYSQL **mysql = (MYSQL **)lua_touserdata(L, 1);
-	luaL_argcheck(L, mysql && *mysql, 1, "'mysql' expected");
+	MYSQL *mysql = *(MYSQL **)lua_touserdata(L, 1);
+	luaL_argcheck(L, mysql, 1, "'mysql' expected");
 	const char *wild = lua_tostring(L, 2);
-	MYSQL_RES *res = mysql_list_tables(*mysql, wild);
+	MYSQL_RES *res = mysql_list_tables(mysql, wild);
 	if(res)
 	{
 		MYSQL_ROW row;
@@ -95,19 +87,19 @@ mysql_table_list(lua_State *L)
 }
 
 static int
-mysql_find(lua_State *L)
+lmysql_select(lua_State *L)
 {
-	MYSQL **mysql = (MYSQL **)lua_touserdata(L, 1);
-	luaL_argcheck(L, mysql && *mysql, 1, "'mysql' expected");
+	MYSQL *mysql = *(MYSQL **)lua_touserdata(L, 1);
+	luaL_argcheck(L, mysql, 1, "'mysql' expected");
 	size_t len;
 	const char *sql_str = lua_tolstring(L, 2, &len);
-	if(mysql_do_it(*mysql, sql_str, len))
+	if(mysql_execute(mysql, sql_str, len))
 	{
 		lua_pushnil(L);
-		lua_pushstring(L, mysql_error(*mysql));
+		lua_pushstring(L, mysql_error(mysql));
 		return 2;
 	}
-	MYSQL_RES *res = mysql_store_result(*mysql);
+	MYSQL_RES *res = mysql_store_result(mysql);
 	int nres = mysql_num_rows(res);
 	lua_pushnumber(L, nres);
 	if(res)
@@ -140,113 +132,104 @@ mysql_find(lua_State *L)
 }
 
 static int
-mysql_update(lua_State *L)
+lmysql_update(lua_State *L)
 {
-	MYSQL **mysql = (MYSQL **)lua_touserdata(L, 1);
-	luaL_argcheck(L, mysql && *mysql, 1, "'mysql' expected");
+	MYSQL *mysql = *(MYSQL **)lua_touserdata(L, 1);
+	luaL_argcheck(L, mysql, 1, "'mysql' expected");
 	size_t len;
 	const char *sql_str = lua_tolstring(L, 2, &len); 
-	if(mysql_do_it(*mysql, sql_str, len))
+	if(mysql_execute(mysql, sql_str, len))
 	{
 		lua_pushnil(L);
-		lua_pushstring(L, mysql_error(*mysql));
+		lua_pushstring(L, mysql_error(mysql));
 		return 2;
 	}
-	lua_pushnumber(L, mysql_affected_rows(*mysql));
+	lua_pushnumber(L, mysql_affected_rows(mysql));
 	return 1;
 }
 
 static int 
-mysql_insert(lua_State *L)
+lmysql_insert(lua_State *L)
 {
-	MYSQL **mysql = (MYSQL **)lua_touserdata(L, 1);
-	luaL_argcheck(L, mysql && *mysql, 1, "'mysql' expected");
+	MYSQL *mysql = *(MYSQL **)lua_touserdata(L, 1);
+	luaL_argcheck(L, mysql, 1, "'mysql' expected");
 	size_t len;
 	const char *sql_str = lua_tolstring(L, 2, &len); 
-	if(mysql_do_it(*mysql, sql_str, len))
+	if(mysql_execute(mysql, sql_str, len))
 	{
 		lua_pushnil(L);
-		lua_pushstring(L, mysql_error(*mysql));
+		lua_pushstring(L, mysql_error(mysql));
 		return 2;
 	}
-	lua_pushnumber(L, mysql_affected_rows(*mysql));
+	lua_pushnumber(L, mysql_affected_rows(mysql));
 	return 1;
 }
 
 static int
-mysql_delete(lua_State *L)
+lmysql_delete(lua_State *L)
 {
-	MYSQL **mysql = (MYSQL **)lua_touserdata(L, 1);
-	luaL_argcheck(L, mysql && *mysql, 1, "'mysql' expected");
+	MYSQL *mysql = *(MYSQL **)lua_touserdata(L, 1);
+	luaL_argcheck(L, mysql, 1, "'mysql' expected");
 	size_t len;
 	const char *sql_str = lua_tolstring(L, 2, &len); 
-	if(mysql_do_it(*mysql, sql_str, len))
+	if(mysql_execute(mysql, sql_str, len))
 	{
 		lua_pushnil(L);
-		lua_pushstring(L, mysql_error(*mysql));
+		lua_pushstring(L, mysql_error(mysql));
 		return 2;
 	}
-	lua_pushnumber(L, mysql_affected_rows(*mysql));
+	lua_pushnumber(L, mysql_affected_rows(mysql));
 	return 1;
 }
 
 static int
-mysql_tostring(lua_State *L)
+lmysql_tostring(lua_State *L)
 {
-	MYSQL **mysql = (MYSQL **)lua_touserdata(L, 1);
-	luaL_argcheck(L, mysql && *mysql, 1, "'mysql' expected");
-	const char *info = mysql_get_host_info(*mysql);
+	MYSQL *mysql = *(MYSQL **)lua_touserdata(L, 1);
+	luaL_argcheck(L, mysql, 1, "'mysql' expected");
+	const char *info = mysql_get_host_info(mysql);
 	lua_pushstring(L, info);
 	return 1;
 }
 
-static int
-connection_new(lua_State *L)
-{
-	MYSQL ** mysql = (MYSQL **)lua_newuserdata(L, sizeof(MYSQL *));
-	*mysql = mysql_init(NULL);
-	luaL_getmetatable(L, "mysql");
-	lua_setmetatable(L, -2); 
-	return 1;
-}
 
 static int
-mysql_begin_transaction(lua_State *L)
+lmysql_begin(lua_State *L)
 {
-	MYSQL **mysql = (MYSQL **)lua_touserdata(L, 1);
-	luaL_argcheck(L, mysql && *mysql, 1, "'mysql' expected");
-	if(mysql_query(*mysql, "BEGIN"))
+	MYSQL *mysql = *(MYSQL **)lua_touserdata(L, 1);
+	luaL_argcheck(L, mysql, 1, "'mysql' expected");
+	if(mysql_query(mysql, "BEGIN"))
 	{
 		lua_pushnil(L);
-		lua_pushstring(L, mysql_error(*mysql));
+		lua_pushstring(L, mysql_error(mysql));
 		return 2;
 	}
 	return 1;
 }
 
 static int
-mysql_rollback_transaction(lua_State *L)
+lmysql_rollback(lua_State *L)
 {
-	MYSQL **mysql = (MYSQL **)lua_touserdata(L, 1);
-	luaL_argcheck(L, mysql && *mysql, 1, "'mysql' expected");
-	if(mysql_query(*mysql, "ROLLBACK"))
+	MYSQL *mysql = *(MYSQL **)lua_touserdata(L, 1);
+	luaL_argcheck(L, mysql, 1, "'mysql' expected");
+	if(mysql_query(mysql, "ROLLBACK"))
 	{
 		lua_pushnil(L);
-		lua_pushstring(L, mysql_error(*mysql));
+		lua_pushstring(L, mysql_error(mysql));
 		return 2;
 	}
 	return 1;
 }
 
 static int
-mysql_commit_transaction(lua_State *L)
+lmysql_commit(lua_State *L)
 {
-	MYSQL **mysql = (MYSQL **)lua_touserdata(L, 1);
-	luaL_argcheck(L, mysql && *mysql, 1, "'mysql' expected");
-	if(mysql_query(*mysql, "COMMIT"))
+	MYSQL *mysql = *(MYSQL **)lua_touserdata(L, 1);
+	luaL_argcheck(L, mysql, 1, "'mysql' expected");
+	if(mysql_query(mysql, "COMMIT"))
 	{
 		lua_pushnil(L);
-		lua_pushstring(L, mysql_error(*mysql));
+		lua_pushstring(L, mysql_error(mysql));
 		return 2;
 	}
 	return 1;
@@ -254,66 +237,69 @@ mysql_commit_transaction(lua_State *L)
 }
 
 static int
-mysql_create_table(lua_State *L)
+lmysql_call(lua_State *L)
 {
 	return 0;
 }
 
-static int
-mysql_drop_table(lua_State *L)
-{
-	return 0;
-}
+static const struct luaL_Reg connection_methods[] = {
+	{"connect", lmysql_connect},
+	{"tostring", lmysql_tostring},
+	{"select", lmysql_select},
+	{"insert", lmysql_insert},
+	{"update", lmysql_update},
+	{"delete", lmysql_delete},
+	{"begin", lmysql_begin},
+	{"rollback", lmysql_rollback},
+	{"commit", lmysql_commit},
+	{"tables", lmysql_tables},
+	{"call", lmysql_call},
+	{NULL, NULL},
+};
 
-static int
-mysql_drop_db(lua_State *L)
-{
-	return 0;
-}
+static const struct luaL_Reg connection_class_methods[] = {
+	{"New", lmysql_open},
+	{NULL, NULL},
+};
 
 int
 mysql_connection_register(lua_State *L)
 {
-	static const struct luaL_Reg connection_methods[] = {
-		{"connect", mysql_connect},
-		{"tostring", mysql_tostring},
-		{"query", mysql_find},
-		{"insert", mysql_insert},
-		{"update", mysql_update},
-		{"delete", mysql_delete},
-		{"create_table", mysql_create_table},
-		{"drop_table", mysql_drop_table},
-		{"drop_db", mysql_drop_db},
-		{"begin", mysql_begin_transaction},
-		{"rollback", mysql_rollback_transaction},
-		{"commit", mysql_commit_transaction},
-		{"tables", mysql_table_list},
-		{NULL, NULL},
-	};
-	static const struct luaL_Reg connection_class_methods[] = {
-		{"New", connection_new},
-		{NULL, NULL},
-	};
 	luaL_newmetatable(L, "mysql");
+#if LUA_VERSION_NUM > 501
+	luaL_setfuncs(L, connection_methods, 0);
+#else
 	luaL_register(L, NULL, connection_methods);
-
+#endif
 	lua_pushvalue(L, -1);
 	lua_setfield(L, -2, "__index");
 
-	lua_pushcfunction(L, connection_gc);
+	lua_pushcfunction(L, lmysql_close);
 	lua_setfield(L, -2, "__gc");
 
+#if LUA_VERSION_NUM > 501
+	luaL_setfuncs(L, connection_class_methods, 0);
+#else
 	luaL_register(L, "mysql", connection_class_methods);
+#endif
 	return 1;
 }
 
 int
 main()
 {
+#if LUA_VERSION_NUM > 501
+	lua_State *L = luaL_newstate();
+#else
 	lua_State *L = lua_open();
+#endif
 	luaL_openlibs(L);
+#if LUA_VERSION_NUM > 501
+	luaL_requiref(L, "mysql", mysql_connection_register, 1);
+#else
 	mysql_connection_register(L);
-	if(-1 == luaL_dofile(L, "mysql.lua"))
+#endif
+	if(0 != luaL_dofile(L, "mysql.lua"))
 	{
 		printf("%s\n", lua_tostring(L, -1));
 	}

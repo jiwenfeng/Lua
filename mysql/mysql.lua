@@ -1,6 +1,16 @@
+--[[
+for k, v in pairs(mysql) do
+	print(k, v)
+end]]
+
 local mysql = mysql:New()
 
-assert(mysql:connect("localhost", "root", "wenfeng", "wenfeng", 10))
+
+assert(mysql:connect("localhost", "root", "wenfeng", "test", 10))
+
+--[[
+
+
 function insert()
 	local ret, res = mysql:insert("insert into user values(8, \"wenfeng\", 10)")
 	if not ret then
@@ -9,9 +19,10 @@ function insert()
 		print("affect rows:", ret)
 	end
 end
+--]]
 
 function query()
-	local ret, res = mysql:query("select * from user")
+	local ret, res = mysql:select("select * from user")
 	if not ret then
 		print(res)
 	else
@@ -25,28 +36,20 @@ function query()
 end
 
 function batch_insert()
-	math.randomseed(os.time())
 	mysql:begin()
-	for i = 21, 30 do
-		local sql_str = string.format("insert into user values(%d, \"%s\", %d)", i, "Test".. i, math.random() % 20)
-		local ret, res = mysql:insert(sql_str)
+	for i = 2, 30 do
+		local sql = string.format("insert into user values(%d, \"Test%d\", %d, \"GuangZhou China\")", i, i, i)
+		local ret, err = mysql:insert(sql)
 		if not ret then
+			print(err)
 			mysql:rollback()
-			print(res)
 			return
 		end
 	end
-	local sql_str = string.format("insert into user values(%d, \"%s\", %d)", 20, "Test".. 20, math.random() % 20)
-	local ret, res = mysql:insert(sql_str)
-	if not ret then
-		mysql:rollback()
-		print(res)
-		return
-	end
 	mysql:commit()
-	print("insert success")
 end
 
+--[[
 function delete()
 	local sql_str = string.format("delete from user where age = 0")
 	local ret, res = mysql:delete(sql_str)
@@ -55,6 +58,15 @@ function delete()
 	end
 	print("success")
 end
-delete()
+--delete()
+--]]
 
+
+--batch_insert()
 query()
+
+--[[
+local tbs = mysql:tables()
+for k, v in pairs(tbs) do
+	print(k, v)
+end]]
