@@ -12,7 +12,7 @@ lmysql_open(lua_State *L)
 	MYSQL ** mysql = (MYSQL **)lua_newuserdata(L, sizeof(MYSQL *));
 	mysql_library_init(0, NULL, NULL);
 	*mysql = mysql_init(NULL);
-	luaL_getmetatable(L, "mysql");
+	luaL_getmetatable(L, "metatable.mysql");
 	lua_setmetatable(L, -2);
 	return 1;
 }
@@ -164,10 +164,10 @@ static const struct luaL_Reg connection_class_methods[] = {
 	{NULL, NULL},
 };
 
-static int
-mysql_register(lua_State *L)
+int
+luaopen_mysql(lua_State *L)
 {
-	luaL_newmetatable(L, "mysql");
+	luaL_newmetatable(L, "metatable.mysql");
 	lua_pushvalue(L, -1);
 	lua_setfield(L, -2, "__index");
 #if LUA_VERSION_NUM > 501
@@ -198,11 +198,11 @@ main()
 #endif
 	luaL_openlibs(L);
 #if LUA_VERSION_NUM > 501
-	luaL_requiref(L, "mysql", mysql_register, 0);
+	luaL_requiref(L, "mysql", luaopen_mysql, 0);
 #else
-	mysql_register(L);
+	luaopen_mysql(L);
 #endif
-	if(0 != luaL_dofile(L, "mysql.lua"))
+	if(0 != luaL_dofile(L, "main.lua"))
 	{
 		printf("%s\n", lua_tostring(L, -1));
 	}
