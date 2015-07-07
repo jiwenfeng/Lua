@@ -51,6 +51,7 @@ lmysql_connect(lua_State *L)
 		lua_pushstring(L, mysql_error(mysql));
 		return 2;
 	}
+	lua_pushboolean(L, 1);
 	return 1;
 }
 
@@ -61,12 +62,12 @@ lmysql_tables(lua_State *L)
 	luaL_argcheck(L, mysql, 1, "`mysql' expected");
 	const char *wild = lua_tostring(L, 2);
 	MYSQL_RES *res = mysql_list_tables(mysql, wild);
-	if(res)
+	lua_newtable(L);
+	if(res != NULL)
 	{
 		MYSQL_ROW row;
-		lua_newtable(L);
 		int n = 1;
-		while((row = mysql_fetch_row(res)))
+		while((row = mysql_fetch_row(res)) != NULL)
 		{
 #if LUA_VERSION_NUM > 501
 			lua_pushinteger(L, n++);
@@ -76,8 +77,8 @@ lmysql_tables(lua_State *L)
 			lua_pushstring(L, row[0]);
 			lua_settable(L, -3);
 		}
+		mysql_free_result(res);
 	}
-	mysql_free_result(res);
 	return 1;
 }
 
@@ -116,7 +117,7 @@ lmysql_execute(lua_State *L)
 		lua_pushnumber(L, mysql_num_rows(res));
 #endif
 		lua_newtable(L);
-		while((row = mysql_fetch_row(res)))
+		while((row = mysql_fetch_row(res)) != NULL)
 		{
 			unsigned long *lengths = mysql_fetch_lengths(res);
 #if LUA_VERSION_NUM > 501
