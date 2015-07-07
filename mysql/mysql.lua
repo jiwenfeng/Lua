@@ -1,14 +1,11 @@
-require "mysql"
+local mysql = require "mysql"
 
 local mysql = mysql:New();
 
---assert(mysql:connect("localhost", "abel", "0402"))
-assert(mysql:connect("localhost", "abel", "0402", "jwf", 10, 10))
+assert(mysql:connect("localhost", "root", "wenfeng", "test", 10))
 
 function query()
-	local ret, res = mysql:execute("call sp_login_auths('wwww', 0, 12, 16777292, 16777291, 3)")
---	local ret, res = mysql:execute("call sp_load_all_user_smy")
---	local ret, res = mysql:execute("select * from user")
+	local ret, res = mysql:execute("select * from user")
 	if not ret then
 		print(res)
 		return
@@ -45,3 +42,4 @@ end
 --insert()
 query()
 --update()
+

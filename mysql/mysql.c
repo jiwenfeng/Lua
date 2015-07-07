@@ -13,7 +13,7 @@ lmysql_open(lua_State *L)
 	mysql_library_init(0, NULL, NULL);
 	*mysql = mysql_init(NULL);
 	luaL_getmetatable(L, "mysql");
-	lua_setmetatable(L, -2); 
+	lua_setmetatable(L, -2);
 	return 1;
 }
 
@@ -68,7 +68,11 @@ lmysql_tables(lua_State *L)
 		int n = 1;
 		while((row = mysql_fetch_row(res)))
 		{
+#if LUA_VERSION_NUM > 501
+			lua_pushinteger(L, n++);
+#else
 			lua_pushnumber(L, n++);
+#endif
 			lua_pushstring(L, row[0]);
 			lua_settable(L, -3);
 		}
@@ -95,19 +99,31 @@ lmysql_execute(lua_State *L)
 				lua_pushstring(L, mysql_error(mysql));
 				return 2;
 			}
+#if LUA_VERSION_NUM > 501
+			lua_pushinteger(L, mysql_affected_rows(mysql));
+#else
 			lua_pushnumber(L, mysql_affected_rows(mysql));
+#endif
 			return 1;
 		}
 		MYSQL_ROW row;
 		MYSQL_FIELD *fields = mysql_fetch_fields(res);
 		int nfields = mysql_num_fields(res);
 		int i = 0, n = 1;
+#if LUA_VERSION_NUM > 501
+		lua_pushinteger(L, mysql_num_rows(res));
+#else
 		lua_pushnumber(L, mysql_num_rows(res));
+#endif
 		lua_newtable(L);
 		while((row = mysql_fetch_row(res)))
 		{
 			unsigned long *lengths = mysql_fetch_lengths(res);
+#if LUA_VERSION_NUM > 501
+			lua_pushinteger(L, n++);
+#else
 			lua_pushnumber(L, n++);
+#endif
 			lua_newtable(L);
 			for(i = 0; i < nfields; i++)
 			{
@@ -148,26 +164,27 @@ static const struct luaL_Reg connection_class_methods[] = {
 	{NULL, NULL},
 };
 
-int
-mysql_connection_register(lua_State *L)
+static int
+mysql_register(lua_State *L)
 {
 	luaL_newmetatable(L, "mysql");
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__index");
 #if LUA_VERSION_NUM > 501
 	luaL_setfuncs(L, connection_methods, 0);
 #else
 	luaL_register(L, NULL, connection_methods);
 #endif
-	lua_pushvalue(L, -1);
-	lua_setfield(L, -2, "__index");
 
 	lua_pushcfunction(L, lmysql_close);
 	lua_setfield(L, -2, "__gc");
 
 #if LUA_VERSION_NUM > 501
-	luaL_setfuncs(L, connection_class_methods, 0);
+	luaL_newlib(L, connection_class_methods);
 #else
 	luaL_register(L, "mysql", connection_class_methods);
 #endif
+
 	return 1;
 }
 
@@ -181,9 +198,9 @@ main()
 #endif
 	luaL_openlibs(L);
 #if LUA_VERSION_NUM > 501
-	luaL_requiref(L, "mysql", mysql_connection_register, 1);
+	luaL_requiref(L, "mysql", mysql_register, 0);
 #else
-	mysql_connection_register(L);
+	mysql_register(L);
 #endif
 	if(0 != luaL_dofile(L, "mysql.lua"))
 	{
