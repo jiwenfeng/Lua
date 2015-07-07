@@ -32,6 +32,7 @@ _loop(lua_State *L)
 				break;
 			case LUA_TSTRING:
 				printf("%s\n", lua_tostring(L, -1));
+				break;
 			case LUA_TTABLE:
 				_loop(L);
 				break;
