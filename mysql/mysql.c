@@ -89,56 +89,56 @@ lmysql_execute(lua_State *L)
 	luaL_argcheck(L, mysql, 1, "`mysql' expected");
 	size_t len;
 	const char *str = lua_tolstring(L, 2, &len);
-	if(0 == mysql_real_query(mysql, str, len))
+	if(0 != mysql_real_query(mysql, str, len))
 	{
-		MYSQL_RES *res = mysql_store_result(mysql);
-		if(NULL == res)
-		{
-			if(0 != mysql_errno(mysql))
-			{
-				lua_pushnil(L);
-				lua_pushstring(L, mysql_error(mysql));
-				return 2;
-			}
-#if LUA_VERSION_NUM > 501
-			lua_pushinteger(L, mysql_affected_rows(mysql));
-#else
-			lua_pushnumber(L, mysql_affected_rows(mysql));
-#endif
-			return 1;
-		}
-		MYSQL_ROW row;
-		MYSQL_FIELD *fields = mysql_fetch_fields(res);
-		int nfields = mysql_num_fields(res);
-		int i = 0, n = 1;
-#if LUA_VERSION_NUM > 501
-		lua_pushinteger(L, mysql_num_rows(res));
-#else
-		lua_pushnumber(L, mysql_num_rows(res));
-#endif
-		lua_newtable(L);
-		while((row = mysql_fetch_row(res)) != NULL)
-		{
-			unsigned long *lengths = mysql_fetch_lengths(res);
-#if LUA_VERSION_NUM > 501
-			lua_pushinteger(L, n++);
-#else
-			lua_pushnumber(L, n++);
-#endif
-			lua_newtable(L);
-			for(i = 0; i < nfields; i++)
-			{
-				lua_pushstring(L, fields[i].name);
-				lua_pushlstring(L, row[i], lengths[i]);
-				lua_settable(L, -3);
-			}
-			lua_settable(L, -3);
-		}
-		mysql_free_result(res);
+		lua_pushnil(L);
+		lua_pushstring(L, mysql_error(mysql));
 		return 2;
 	}
-	lua_pushnil(L);
-	lua_pushstring(L, mysql_error(mysql));
+	MYSQL_RES *res = mysql_store_result(mysql);
+	if(NULL == res)
+	{
+		if(0 != mysql_errno(mysql))
+		{
+			lua_pushnil(L);
+			lua_pushstring(L, mysql_error(mysql));
+			return 2;
+		}
+#if LUA_VERSION_NUM > 501
+		lua_pushinteger(L, mysql_affected_rows(mysql));
+#else
+		lua_pushnumber(L, mysql_affected_rows(mysql));
+#endif
+		return 1;
+	}
+	MYSQL_ROW row;
+	MYSQL_FIELD *fields = mysql_fetch_fields(res);
+	int nfields = mysql_num_fields(res);
+	int i = 0, n = 1;
+#if LUA_VERSION_NUM > 501
+	lua_pushinteger(L, mysql_num_rows(res));
+#else
+	lua_pushnumber(L, mysql_num_rows(res));
+#endif
+	lua_newtable(L);
+	while((row = mysql_fetch_row(res)) != NULL)
+	{
+		unsigned long *lengths = mysql_fetch_lengths(res);
+#if LUA_VERSION_NUM > 501
+		lua_pushinteger(L, n++);
+#else
+		lua_pushnumber(L, n++);
+#endif
+		lua_newtable(L);
+		for(i = 0; i < nfields; i++)
+		{
+			lua_pushstring(L, fields[i].name);
+			lua_pushlstring(L, row[i], lengths[i]);
+			lua_settable(L, -3);
+		}
+		lua_settable(L, -3);
+	}
+	mysql_free_result(res);
 	return 2;
 }
 
