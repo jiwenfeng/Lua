@@ -7,10 +7,10 @@ local DB = {state = 1, Breaks = {}, Help = {
 	"[p var] Display the value of the (var)",
 	"[bt] Display the program stack",
 	"[list] List the code of where it is presently stopped",
-	"[enable] Enable all breakpoints",
 	"[info] Display all breakpoints",
-	"[disable file:line] Disable breakpoints",
-	"[delete file:line] Delete breakpoints",
+	"[enable file:line] Enable breakpoint",
+	"[disable file:line] Disable breakpoint",
+	"[delete file:line] Delete breakpoint",
 	"[quit] Exit"
 }}
 
