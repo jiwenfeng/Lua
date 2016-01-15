@@ -22,9 +22,9 @@ local Function =
 		end
 	end,
 	["list"] = function(content)
-		if DB.cur then
-			local info = DB.cur
-			ShowSourceLine(info.source, info.currentline - 5, info.currentline + 5)
+		if DB.curFrame then
+			local frame = DB.curFrame
+			ShowSourceLine(frame.source, frame.currentline - 5, frame.currentline + 5)
 		else
 			print("No source code")
 		end
@@ -112,8 +112,8 @@ local Function =
 		DB.Breaks = {}
 	end,
 	["where"] = function(content)
-		if DB.cur then
-			print(DB.cur.source, DB.cur.currentline)
+		if DB.curFrame then
+			print(DB.curFrame.source, DB.cur.currentline)
 		else
 			print("No stack.")
 		end
@@ -218,21 +218,21 @@ function Hook()
 	if DB.state == 1 or DB.state == 4 then
 		local info = debug.getinfo(2, "nfSlLu")
 		if not DB.Breaks[info.short_src .. ":" .. info.currentline] then
-			DB.cur = nil
+			DB.curFrame = nil
 			return
 		end
 		print(string.format("Hit breakpoint %s:%d", info.short_src, info.currentline))
-		DB.cur = info
+		DB.curFrame = info
 		PrintUsage()
 		return
 	end
 	if DB.state == 2 then
 		local info = debug.getinfo(2, "nfSlLu")
 		if info.what == "C" then
-			DB.cur = nil
+			DB.curFrame = nil
 			return
 		end
-		DB.cur = info
+		DB.curFrame = info
 		ShowSourceLine(info.source, info.currentline, info.currentline, true)
 		PrintUsage()
 		return
