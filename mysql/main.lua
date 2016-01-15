@@ -2,7 +2,7 @@ local mysql = require "mysql"
 
 local mysql = mysql:New();
 
-assert(mysql:connect("localhost", "root", "wenfeng", "test", 10))
+assert(mysql:connect("localhost", "root", "wenfeng", "Test", 10))
 
 function query()
 	local ret, res = mysql:execute("select * from user")
@@ -38,7 +38,9 @@ function update()
 	end
 	print("affect ", ret, "rows")
 end
+
 --insert()
+--query()
+update()
 query()
---update()
 
