@@ -204,7 +204,7 @@ function ShowSourceLine(file, start_line, last_line, show_file)
 	handle:close()
 end
 
-function PrintUsage()
+function GetInput()
 	repeat 
 		io.write("Debug>")
 		local cmd = io.read()
@@ -224,7 +224,7 @@ function Hook()
 		end
 		print(string.format("Hit breakpoint %s:%d", info.short_src, info.currentline))
 		DB.curFrame = info
-		PrintUsage()
+		GetInput()
 		return
 	end
 	if DB.state == 2 then
@@ -235,13 +235,13 @@ function Hook()
 		end
 		DB.curFrame = info
 		ShowSourceLine(info.source, info.currentline, info.currentline, true)
-		PrintUsage()
+		GetInput()
 		return
 	end
 end
 
 function Debug()
-	PrintUsage()
+	GetInput()
 	debug.sethook(Hook, "lcr")
 end
 
