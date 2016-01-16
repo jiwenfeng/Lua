@@ -20,6 +20,7 @@ local Function =
 		for k, v in ipairs(DB.Help) do
 			print(v)
 		end
+		DB.state = 4
 	end,
 	["list"] = function(content)
 		if DB.curFrame then
